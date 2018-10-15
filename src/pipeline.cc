@@ -124,12 +124,17 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
   }
 
   bool changed = prev->args.size() != args.size();
-  for (size_t i = 0; !changed && i < args.size(); i++)
-    if (strcmp(prev->args[i], args[i]))
+  size_t i;
+  for (i = 0; !changed && i < args.size(); i++)
+    if (strcmp(prev->args[i], args[i])) {
       changed = true;
+      break;
+    }
   if (changed)
-    LOG_S(INFO) << "args changed for " << path
-                << (from ? " (via " + *from + ")" : std::string());
+    LOG_S(INFO) << std::string("args changed (") + ", arg #" +
+                       std::to_string(i) + ": '" + prev->args[i] + "' => '" +
+                       args[i] + "') for "
+                << path << (from ? " (via " + *from + ")" : std::string());
   return changed;
 };
 
@@ -217,12 +222,15 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   if (!write_time)
     return true;
   int reparse = vfs->Stamp(path_to_index, *write_time, 0);
+  LOG_S(INFO) << "initial reparse=" << reparse << " " << path_to_index;
   if (request.path != path_to_index) {
     std::optional<int64_t> mtime1 = LastWriteTime(request.path);
     if (!mtime1)
       return true;
-    if (vfs->Stamp(request.path, *mtime1, 0))
+    if (vfs->Stamp(request.path, *mtime1, 0)) {
       reparse = 2;
+      LOG_S(INFO) << "(request.path != path_to_index) reparse=2 " << path_to_index;
+    }
   }
   if (g_config->index.onChange) {
     reparse = 2;
@@ -233,30 +241,40 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
   }
   bool track = g_config->index.trackDependency > 1 ||
                (g_config->index.trackDependency == 1 && request.ts < loaded_ts);
-  if (!reparse && !track)
+  if (!reparse && !track) {
+    LOG_S(INFO) << "Reparse not needed " << path_to_index;
     return true;
-
+  }
   if (reparse < 2)
     do {
       std::unique_lock lock(GetFileMutex(path_to_index));
       prev = RawCacheLoad(path_to_index);
+      if (!prev) {
+        LOG_S(INFO) << "!prev " << path_to_index;
+      }
       if (!prev || CacheInvalid(vfs, prev.get(), path_to_index, entry.args,
-          std::nullopt))
+                                std::nullopt)) {
+        LOG_S(INFO) << "cache invalid " << path_to_index;
         break;
+      }
       if (track)
         for (const auto &dep : prev->dependencies) {
           if (auto mtime1 = LastWriteTime(dep.first.val().str())) {
             if (dep.second < *mtime1) {
+              LOG_S(INFO) << "(dependency " << dep.first.val().str() << ") Reparse=2 " << path_to_index;
               reparse = 2;
               break;
             }
           } else {
+            LOG_S(INFO) << "no mtime for" << dep.first.val().str();
             reparse = 2;
             break;
           }
         }
-      if (reparse == 0)
+      if (reparse == 0) {
         return true;
+         LOG_S(INFO) << "Reparse not needed " << path_to_index;
+      }
       if (reparse == 2)
         break;
 
@@ -297,6 +315,7 @@ bool Indexer_Parse(SemaManager *completion, WorkingFiles *wfiles,
           project->root2folder[entry.root].path2entry_index[path] = entry.id;
         }
       }
+      LOG_S(INFO) << "Reparse not needed " << path_to_index;
       return true;
     } while (0);
 
