@@ -30,4 +30,4 @@ void TraceMe();
 std::string GetExternalCommandOutput(const std::vector<std::string> &command,
                                      std::string_view input);
 
-void SpawnThread(void *(*fn)(void *), void *arg);
+void SpawnThread(void *(*fn)(void *), void *arg, bool idle = false);

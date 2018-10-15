@@ -41,6 +41,7 @@ using namespace llvm;
 using namespace llvm::cl;
 
 std::string g_init_options;
+std::string g_cache_dir;
 
 namespace {
 OptionCategory C("ccls options");
@@ -55,6 +56,7 @@ opt<std::string> opt_index("index",
                            value_desc("root"), cat(C));
 opt<std::string> opt_init("init", desc("extra initialization options in JSON"),
                           cat(C));
+opt<std::string> opt_cache("cache", desc("cache directory"), cat(C));
 opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"),
                               cat(C));
 opt<std::string> opt_log_file_append("log-file-append", desc("log"),
@@ -132,6 +134,10 @@ int main(int argc, char **argv) {
       }
     }
 
+    if (!opt_cache.empty()) {
+      g_cache_dir = opt_cache.getValue();
+    }
+    
     sys::ChangeStdinToBinary();
     sys::ChangeStdoutToBinary();
     if (opt_index.size()) {

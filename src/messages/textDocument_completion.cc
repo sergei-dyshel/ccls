@@ -196,7 +196,7 @@ void FilterCandidates(lsCompletionList &result,
     // before, but then we should also sort by priority.
     char buf[16];
     for (size_t i = 0; i < items.size(); ++i)
-      items[i].sortText = tofixedbase64(i, buf);
+      items[i].sortText = std::string(" ") + tofixedbase64(i, buf);
   };
 
   // No complete text; don't run any filtering logic except to trim the items.

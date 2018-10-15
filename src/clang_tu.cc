@@ -25,18 +25,18 @@ limitations under the License.
 using namespace clang;
 
 std::string PathFromFileEntry(const FileEntry &file) {
-  StringRef Name = file.tryGetRealPathName();
-  if (Name.empty())
-    Name = file.getName();
+  // StringRef Name = file.tryGetRealPathName();
+  // if (Name.empty())
+    StringRef Name = file.getName();
   std::string ret = NormalizePath(Name);
   // Resolve /usr/include/c++/7.3.0 symlink.
-  if (!llvm::any_of(g_config->workspaceFolders, [&](const std::string &root) {
-        return StartsWith(ret, root);
-      })) {
-    SmallString<256> dest;
-    llvm::sys::fs::real_path(ret, dest);
-    ret = llvm::sys::path::convert_to_slash(dest.str());
-  }
+  // if (!llvm::any_of(g_config->workspaceFolders, [&](const std::string &root) {
+  //       return StartsWith(ret, root);
+  //     })) {
+  //   SmallString<256> dest;
+  //   llvm::sys::fs::real_path(ret, dest);
+  //   ret = llvm::sys::path::convert_to_slash(dest.str());
+  // }
   return ret;
 }
 

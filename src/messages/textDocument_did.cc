@@ -19,6 +19,8 @@ limitations under the License.
 #include "pipeline.hh"
 #include "project.h"
 #include "working_files.h"
+#include "log.hh"
+
 using namespace ccls;
 
 namespace {
@@ -155,6 +157,7 @@ struct Handler_TextDocumentDidSave
     const auto &params = request->params;
     const std::string &path = params.textDocument.uri.GetPath();
     pipeline::Index(path, {}, IndexMode::Normal);
+    LOG_S(INFO) << "received didSave for " << path;
     clang_complete->NotifySave(path);
   }
 };

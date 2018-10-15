@@ -35,6 +35,7 @@ using namespace llvm;
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
+extern std::string g_cache_dir;
 
 namespace {
 
@@ -414,6 +415,10 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         }
       }
 
+      if (!g_cache_dir.empty()) {
+        g_config->cacheDirectory = g_cache_dir;
+      }
+
       rapidjson::StringBuffer output;
       rapidjson::Writer<rapidjson::StringBuffer> writer(output);
       JsonWriter json_writer(&writer);
@@ -424,6 +429,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         g_config->cacheDirectory = NormalizePath(g_config->cacheDirectory);
         EnsureEndsInSlash(g_config->cacheDirectory);
       }
+      LOG_S(INFO) << "cache directory: " << g_config->cacheDirectory;
     }
 
     // Client capabilities
@@ -479,7 +485,8 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
     LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
     for (int i = 0; i < g_config->index.threads; i++)
-      SpawnThread(Indexer, new std::pair<MessageHandler *, int>{this, i});
+      SpawnThread(Indexer, new std::pair<MessageHandler *, int>{this, i},
+                  true /* idle */);
 
     // Start scanning include directories before dispatching project
     // files, because that takes a long time.
