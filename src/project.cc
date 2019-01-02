@@ -299,7 +299,7 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
   size_t i = std::mismatch(a.begin(), a.end(), b.begin()).first - a.begin();
   size_t j = std::mismatch(a.rbegin(), a.rend(), b.rbegin()).first - a.rbegin();
   int score = 10 * i + j;
-  if (i + j < b.size())
+  if (i + j < a.size())
     score -= 100 * (std::count(a.begin() + i, a.end() - j, '/') +
                     std::count(b.begin() + i, b.end() - j, '/'));
   return score;
