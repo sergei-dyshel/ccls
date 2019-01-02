@@ -73,7 +73,7 @@ void TraceMe() {
     raise(traceme[0] == 's' ? SIGSTOP : SIGTSTP);
 }
 
-void SpawnThread(void *(*fn)(void *), void *arg) {
+void SpawnThread(void *(*fn)(void *), void *arg, bool idle) {
   pthread_t thd;
   pthread_attr_t attr;
   struct rlimit rlim;
@@ -85,6 +85,15 @@ void SpawnThread(void *(*fn)(void *), void *arg) {
   pthread_attr_setstacksize(&attr, stack_size);
   pipeline::ThreadEnter();
   pthread_create(&thd, &attr, fn, arg);
+  if (idle) {
+    struct sched_param param;
+    param.__sched_priority = 0;
+    int res = pthread_setschedparam(thd, SCHED_IDLE, &param);
+    if (res) {
+      printf("pthread_setschedparam exited with %d", res);
+      exit(1);
+    }
+  }
   pthread_attr_destroy(&attr);
 }
 } // namespace ccls

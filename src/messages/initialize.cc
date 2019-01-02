@@ -37,6 +37,7 @@ namespace ccls {
 using namespace llvm;
 
 extern std::vector<std::string> g_init_options;
+extern std::string g_cache_dir;
 
 namespace {
 enum class TextDocumentSyncKind { None = 0, Full = 1, Incremental = 2 };
@@ -294,6 +295,10 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
       }
     }
 
+      if (!g_cache_dir.empty()) {
+        g_config->cacheDirectory = g_cache_dir;
+      }
+
     rapidjson::StringBuffer output;
     rapidjson::Writer<rapidjson::StringBuffer> writer(output);
     JsonWriter json_writer(&writer);
@@ -307,6 +312,7 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
       g_config->cacheDirectory = NormalizePath(Path.str());
       EnsureEndsInSlash(g_config->cacheDirectory);
     }
+      LOG_S(INFO) << "cache directory: " << g_config->cacheDirectory;
   }
 
   // Client capabilities
@@ -359,11 +365,13 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   // may take a long time. Indexer threads will emit status/progress
   // reports.
   if (g_config->index.threads == 0)
-    g_config->index.threads = std::thread::hardware_concurrency();
+    g_config->index.threads =
+        std::min(std::thread::hardware_concurrency(), 16U);
 
   LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
   for (int i = 0; i < g_config->index.threads; i++)
-    SpawnThread(Indexer, new std::pair<MessageHandler *, int>{m, i});
+    SpawnThread(Indexer, new std::pair<MessageHandler *, int>{m, i},
+								true /* idle */);
 
   // Start scanning include directories before dispatching project
   // files, because that takes a long time.

@@ -19,6 +19,7 @@ limitations under the License.
 #include "project.hh"
 #include "sema_manager.hh"
 #include "working_files.hh"
+#include "log.hh"
 
 namespace ccls {
 void MessageHandler::textDocument_didChange(TextDocumentDidChangeParam &param) {
@@ -66,6 +67,7 @@ void MessageHandler::textDocument_didOpen(DidOpenTextDocumentParam &param) {
 void MessageHandler::textDocument_didSave(TextDocumentParam &param) {
   const std::string &path = param.textDocument.uri.GetPath();
   pipeline::Index(path, {}, IndexMode::Normal, true);
+  LOG_S(INFO) << "received didSave for " << path;
   manager->OnSave(path);
 }
 } // namespace ccls
