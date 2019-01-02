@@ -15,7 +15,7 @@ limitations under the License.
 
 #include "message_handler.hh"
 #include "query.hh"
-
+#include "log.hh"
 namespace ccls {
 namespace {
 WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
@@ -36,6 +36,7 @@ WorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *wfiles, SymbolRef sym,
         return;
 
       const std::string &path = file.def->path;
+      LOG_S(INFO) << "Will rename in " << path;
       path_to_edit[file_id].textDocument.uri = DocumentUri::FromPath(path);
 
       WorkingFile *wf = wfiles->GetFile(path);

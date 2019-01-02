@@ -619,9 +619,9 @@ public:
     auto [it, inserted] = db->uid2lid_and_path.try_emplace(FE.getUniqueID());
     if (inserted) {
       it->second.first = db->uid2lid_and_path.size() - 1;
-      SmallString<256> Path = FE.tryGetRealPathName();
-      if (Path.empty())
-        Path = FE.getName();
+      // SmallString<256> Path = FE.tryGetRealPathName();
+      // if (Path.empty())
+        SmallString<256> Path = FE.getName();
       if (!llvm::sys::path::is_absolute(Path) &&
           !SM.getFileManager().makeAbsolutePath(Path))
         return -1;
