@@ -13,6 +13,8 @@
 #include <clang/Sema/Sema.h>
 #include <llvm/ADT/Twine.h>
 
+#include <chrono>
+
 #if LLVM_VERSION_MAJOR < 8
 #include <regex>
 #endif
@@ -493,6 +495,7 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
                                              ReplyOnce &reply) {
   static CompleteConsumerCache<std::vector<CompletionItem>> cache;
   std::string path = param.textDocument.uri.getPath();
+  auto location = path + ":" + param.position.toString();
   WorkingFile *wf = wfiles->getFile(path);
   if (!wf) {
     reply.notOpened(path);
@@ -530,7 +533,17 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
       ok = col >= 0 && buffer_line[col] == '-'; // ->
       break;
     }
+
+    LOG_S(INFO) << "Completion triggered by character '"
+                << param.context.triggerCharacter.value() << "', at "
+                << location;
     if (!ok) {
+      reply(result);
+      return;
+    } else if (wf->lazyCompletion) {
+      LOG_S(INFO)
+          << "Returning immediately incomplete result because of lazy mode";
+      result.isIncomplete = true;
       reply(result);
       return;
     }
@@ -540,6 +553,11 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
   Position end_pos;
   Position begin_pos =
       wf->getCompletionPosition(param.position, &filter, &end_pos);
+
+  LOG_S(INFO) << "Completion triggered by kind="
+              << static_cast<int>(param.context.triggerKind)
+              << " filter='" << filter << "', at "
+              << location;
 
 #if LLVM_VERSION_MAJOR < 8
   ParseIncludeLineResult preprocess = ParseIncludeLine(buffer_line);
@@ -565,9 +583,9 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
     return;
   }
 #endif
-
+  auto startTimestamp = std::chrono::steady_clock::now();
   SemaManager::OnComplete callback =
-      [filter, path, begin_pos, end_pos, reply,
+      [filter, path, begin_pos, end_pos, reply, wf, startTimestamp,
        buffer_line](CodeCompleteConsumer *optConsumer) {
         if (!optConsumer)
           return;
@@ -578,6 +596,19 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
         filterCandidates(result, filter, begin_pos, end_pos, buffer_line);
         reply(result);
         if (!consumer->from_cache) {
+          auto endTimestamp = std::chrono::steady_clock::now();
+          auto timeMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            endTimestamp - startTimestamp)
+                            .count();
+          if (timeMs > 500 && !wf->lazyCompletion) {
+            LOG_S(INFO) << "Completion took too long (" << timeMs
+                        << " ms), enabling lazy mode";
+            wf->lazyCompletion = true;
+          } else if (timeMs <= 500 && wf->lazyCompletion) {
+            LOG_S(INFO) << "Completion was fast enough (" << timeMs
+                        << " ms), disablihng lazy mode";
+            wf->lazyCompletion = false;
+          }
           cache.withLock([&]() {
             cache.path = path;
             cache.line = buffer_line;
@@ -592,6 +623,15 @@ void MessageHandler::textDocument_completion(CompletionParam &param,
     cache.withLock([&]() { consumer.ls_items = cache.result; });
     callback(&consumer);
   } else {
+    if (param.context.triggerKind !=
+            CompletionTriggerKind::TriggerForIncompleteCompletions &&
+        filter.size() == 1 && wf->lazyCompletion) {
+        LOG_S(INFO)
+            << "Returning immediately incomplete result because of lazy mode";
+      result.isIncomplete = true;
+      reply(result);
+      return;
+    }
     manager->comp_tasks.pushBack(std::make_unique<SemaManager::CompTask>(
         reply.id, param.textDocument.uri.getPath(), begin_pos,
         std::make_unique<CompletionConsumer>(ccOpts, false), ccOpts, callback));

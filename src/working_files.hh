@@ -16,6 +16,7 @@ struct WorkingFile {
   int64_t timestamp = 0;
   int version = 0;
   std::string filename;
+  bool lazyCompletion = false;
 
   std::string buffer_content;
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
