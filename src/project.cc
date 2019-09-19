@@ -455,8 +455,9 @@ void Project::loadDirectory(const std::string &root, Project::Folder &folder) {
       // workspace folder.
       if (!once) {
         once = true;
-        llvm::vfs::getRealFileSystem()->setCurrentWorkingDirectory(
-            entry.directory);
+        // Sergei: make ccls-clean-previous.sh work
+        // llvm::vfs::getRealFileSystem()->setCurrentWorkingDirectory(
+        //     entry.directory);
       }
       proc.getSearchDirs(entry);
 
