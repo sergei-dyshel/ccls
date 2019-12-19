@@ -16,5 +16,5 @@ void freeUnusedMemory();
 // Stop self and wait for SIGCONT.
 void traceMe();
 
-void spawnThread(void *(*fn)(void *), void *arg);
+void spawnThread(void *(*fn)(void *), void *arg, bool idle = false);
 } // namespace ccls

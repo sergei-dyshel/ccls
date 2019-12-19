@@ -383,7 +383,8 @@ void do_initialize(MessageHandler *m, InitializeParam &param,
 
   LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
   for (int i = 0; i < g_config->index.threads; i++)
-    spawnThread(indexer, new std::pair<MessageHandler *, int>{m, i});
+    spawnThread(indexer, new std::pair<MessageHandler *, int>{m, i},
+								true /* idle */);
 
   // Start scanning include directories before dispatching project
   // files, because that takes a long time.
