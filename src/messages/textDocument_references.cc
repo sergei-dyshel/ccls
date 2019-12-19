@@ -38,7 +38,7 @@ struct ReferenceParam : public TextDocumentPositionParam {
   // Exclude references with any |Role| bits set.
   Role excludeRole = Role::None;
   // Include references with all |Role| bits set.
-  Role role = Role::None;
+  Role role = Role::All;
 };
 REFLECT_STRUCT(ReferenceParam::Context, includeDeclaration);
 REFLECT_STRUCT(ReferenceParam, textDocument, position, context, folders, base,
@@ -73,7 +73,7 @@ void MessageHandler::textDocument_references(JsonReader &reader,
       stack.pop_back();
       auto fn = [&](Use use, SymbolKind parent_kind) {
         if (file_set[use.file_id] &&
-            Role(use.role & param.role) == param.role &&
+            Role(use.role & param.role) != Role::None &&
             !(use.role & param.excludeRole) && seen_uses.insert(use).second)
           if (auto loc = GetLsLocation(db, wfiles, use))
             result.push_back(*loc);
