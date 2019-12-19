@@ -377,7 +377,8 @@ void Initialize(MessageHandler *m, InitializeParam &param, ReplyOnce &reply) {
   // may take a long time. Indexer threads will emit status/progress
   // reports.
   if (g_config->index.threads == 0)
-    g_config->index.threads = std::thread::hardware_concurrency();
+    g_config->index.threads =
+        std::min(std::thread::hardware_concurrency(), 16U);
 
   LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
   for (int i = 0; i < g_config->index.threads; i++)
