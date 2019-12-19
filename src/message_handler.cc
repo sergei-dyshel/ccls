@@ -213,6 +213,9 @@ void MessageHandler::run(InMessage &msg) {
                         ex.what() + " for " + reader.getPath());
       } catch (NotIndexed &) {
         throw;
+      } catch (const std::exception &exc) {
+        reply.error(ErrorCode::InternalError,
+                    "failed to process " + msg.method + ": " + exc.what());
       } catch (...) {
         reply.error(ErrorCode::InternalError,
                     "failed to process " + msg.method);
