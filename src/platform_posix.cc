@@ -87,8 +87,13 @@ void SpawnThread(void *(*fn)(void *), void *arg, bool idle) {
   pthread_create(&thd, &attr, fn, arg);
   if (idle) {
     struct sched_param param;
+#ifdef __APPLE__
+    param.sched_priority = 0;
+    int res = pthread_setschedparam(thd, SCHED_RR, &param);
+#else
     param.__sched_priority = 0;
     int res = pthread_setschedparam(thd, SCHED_IDLE, &param);
+#endif
     if (res) {
       printf("pthread_setschedparam exited with %d", res);
       exit(1);
