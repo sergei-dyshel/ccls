@@ -48,16 +48,21 @@ struct Out_cclsCall {
   std::string id;
   std::string_view name;
   Location location;
+  lsRange useRange;
   CallType callType = CallType::Direct;
   int numChildren;
   // Empty if the |levels| limit is reached.
   std::vector<Out_cclsCall> children;
   bool operator==(const Out_cclsCall &o) const {
-    return location == o.location;
+    return (location == o.location) && (useRange == o.useRange);
   }
-  bool operator<(const Out_cclsCall &o) const { return location < o.location; }
+  bool operator<(const Out_cclsCall &o) const
+  {
+    return location == o.location ? useRange < o.useRange
+                                  : location < o.location;
+  }
 };
-REFLECT_STRUCT(Out_cclsCall, id, name, location, callType, numChildren,
+REFLECT_STRUCT(Out_cclsCall, id, name, location, useRange, callType, numChildren,
                children);
 
 bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
@@ -67,7 +72,7 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
   entry->numChildren = 0;
   if (!def)
     return false;
-  auto handle = [&](SymbolRef sym, int file_id, CallType call_type1) {
+  auto handle = [&](SymbolRef sym, int file_id, CallType call_type1, Range useRange) {
     entry->numChildren++;
     if (levels > 0) {
       Out_cclsCall entry1;
@@ -76,6 +81,9 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
       if (auto loc = getLsLocation(m->db, m->wfiles,
                                    Use{{sym.range, sym.role}, file_id}))
         entry1.location = *loc;
+      if (auto loc = getLsLocation(m->db, m->wfiles,
+                                   Use{{useRange, sym.role}, file_id}))
+        entry1.useRange = loc->range;
       entry1.callType = call_type1;
       if (expand(m, &entry1, callee, call_type, qualified, levels - 1))
         entry->children.push_back(std::move(entry1));
@@ -86,7 +94,7 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
       if (const auto *def = func.anyDef())
         for (SymbolRef sym : def->callees)
           if (sym.kind == Kind::Func)
-            handle(sym, def->file_id, call_type);
+            handle(sym, def->file_id, call_type, sym.range);
     } else {
       for (Use use : func.uses) {
         const QueryFile &file1 = m->db->files[use.file_id];
@@ -98,7 +106,7 @@ bool expand(MessageHandler *m, Out_cclsCall *entry, bool callee,
               (!best || best->extent.start < sym.extent.start))
             best = sym;
         if (best)
-          handle(*best, use.file_id, call_type);
+          handle(*best, use.file_id, call_type, use.range);
       }
     }
   };
