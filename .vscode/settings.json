@@ -1,0 +1,13 @@
+{
+  "clangd.path": "q-lang-server",
+  "clangd.arguments": ["--clangd", "--filtered"],
+  "ccls.launch.command": "q-lang-server",
+  "ccls.launch.args": ["--ccls", "--filtered"],
+  "qcfg.tasks": {
+      "q-make": {
+        "type": "terminal",
+        "command": "q-make blabla",
+        "flags": ["notifyOnFailure"]
+    }
+  }
+}
